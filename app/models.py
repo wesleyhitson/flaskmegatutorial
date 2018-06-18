@@ -82,18 +82,6 @@ def load_user(id):
     return User.query.get(int(id))
 
 
-class Post(db.Model):
-    __searchable__ = ['body']
-    id = db.Column(db.Integer, primary_key=True)
-    body = db.Column(db.String(140))
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    language = db.Column(db.String(5))
-
-    def __repr__(self):
-        return '<Post {}>'.format(self.body)
-
-
 class SearchableMixin(object):
     @classmethod
     def search(cls, expression, page, per_page):
@@ -103,13 +91,13 @@ class SearchableMixin(object):
         when = []
         for i in range(len(ids)):
             when.append((ids[i], i))
-        return cls.query.filter(cls,id.in_(ids)).order_by(
+        return cls.query.filter(cls.id.in_(ids)).order_by(
             db.case(when, value=cls.id)), total
 
     @classmethod
     def before_commit(cls, session):
         session._changes = {
-            'add': list(seesion.new),
+            'add': list(session.new),
             'update': list(session.dirty),
             'delete': list(session.deleted)
         }
@@ -125,7 +113,7 @@ class SearchableMixin(object):
         for obj in session._changes['delete']:
             if isinstance(obj, SearchableMixin):
                 remove_from_index(obj.__tablename__, obj)
-        sessin._changes = None
+        session._changes = None
 
     @classmethod
     def reindex(cls):
@@ -134,3 +122,15 @@ class SearchableMixin(object):
 
 db.event.listen(db.session, 'before_commit', SearchableMixin.before_commit)
 db.event.listen(db.session, 'after_commit', SearchableMixin.after_commit)
+
+
+class Post(SearchableMixin, db.Model):
+    __searchable__ = ['body']
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.String(140))
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    language = db.Column(db.String(5))
+
+    def __repr__(self):
+        return '<Post {}>'.format(self.body)
