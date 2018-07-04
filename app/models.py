@@ -105,7 +105,7 @@ class SearchableMixin(object):
     @classmethod
     def after_commit(cls, session):
         for obj in session._changes['add']:
-            if isinstance(obj, SearcheableMixin):
+            if isinstance(obj, SearchableMixin):
                 add_to_index(obj.__tablename__, obj)
         for obj in session._changes['update']:
             if isinstance(obj, SearchableMixin):
